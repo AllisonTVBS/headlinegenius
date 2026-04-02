@@ -1,0 +1,839 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HeadlineGenius 流量密碼產生器</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --coral: #D85A30;
+    --coral-dark: #993C1D;
+    --coral-light: #FAECE7;
+    --coral-border: #F0997B;
+    --text-primary: #1a1a18;
+    --text-secondary: #5a5a56;
+    --text-tertiary: #9a9a94;
+    --bg: #f7f6f2;
+    --bg-surface: #ffffff;
+    --bg-muted: #f0efe9;
+    --border: rgba(0,0,0,0.10);
+    --border-mid: rgba(0,0,0,0.18);
+    --radius-md: 8px;
+    --radius-lg: 14px;
+    --radius-xl: 20px;
+  }
+
+  html { font-size: 16px; }
+
+  body {
+    font-family: 'Noto Serif TC', Georgia, serif;
+    background: var(--bg);
+    color: var(--text-primary);
+    min-height: 100vh;
+    line-height: 1.6;
+  }
+
+  /* ── Header ── */
+  .site-header {
+    background: var(--bg-surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0 2rem;
+    height: 64px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  .logo {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+  }
+  .logo-wordmark {
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: var(--text-primary);
+  }
+  .logo-wordmark em {
+    font-style: normal;
+    color: var(--coral);
+  }
+  .logo-tag {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    color: var(--text-tertiary);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding-bottom: 2px;
+  }
+
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .api-status {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    color: var(--text-tertiary);
+    cursor: pointer;
+    padding: 6px 12px;
+    border: 1px solid var(--border);
+    border-radius: 99px;
+    background: transparent;
+    transition: border-color 0.15s, background 0.15s;
+  }
+  .api-status:hover {
+    border-color: var(--border-mid);
+    background: var(--bg-muted);
+  }
+  .api-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: #ccc;
+    transition: background 0.3s;
+  }
+  .api-dot.active { background: #639922; }
+  .api-dot.error { background: #E24B4A; }
+
+  /* ── API Key Modal ── */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.35);
+    z-index: 200;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+  }
+  .modal-overlay.open { display: flex; }
+
+  .modal {
+    background: var(--bg-surface);
+    border-radius: var(--radius-xl);
+    padding: 2rem;
+    width: 100%;
+    max-width: 440px;
+    border: 1px solid var(--border);
+    animation: modalIn 0.2s ease;
+  }
+  @keyframes modalIn {
+    from { opacity: 0; transform: scale(0.96) translateY(8px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+  }
+
+  .modal-title {
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 6px;
+    color: var(--text-primary);
+  }
+  .modal-desc {
+    font-size: 13px;
+    color: var(--text-secondary);
+    line-height: 1.6;
+    margin-bottom: 1.25rem;
+    font-family: 'Space Mono', monospace;
+  }
+  .modal-desc a {
+    color: var(--coral);
+    text-decoration: none;
+  }
+  .modal-desc a:hover { text-decoration: underline; }
+
+  .modal-input {
+    width: 100%;
+    padding: 10px 14px;
+    font-size: 13px;
+    font-family: 'Space Mono', monospace;
+    border: 1px solid var(--border-mid);
+    border-radius: var(--radius-md);
+    background: var(--bg-muted);
+    color: var(--text-primary);
+    outline: none;
+    transition: border-color 0.15s;
+    margin-bottom: 12px;
+  }
+  .modal-input:focus { border-color: var(--coral); }
+  .modal-input::placeholder { color: var(--text-tertiary); }
+
+  .modal-note {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    color: var(--text-tertiary);
+    margin-bottom: 1.25rem;
+    line-height: 1.6;
+    padding: 8px 12px;
+    background: var(--bg-muted);
+    border-radius: var(--radius-md);
+    border-left: 3px solid var(--border-mid);
+  }
+
+  .modal-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+  }
+  .btn-cancel {
+    padding: 9px 18px;
+    font-size: 13px;
+    font-family: 'Space Mono', monospace;
+    border: 1px solid var(--border-mid);
+    border-radius: var(--radius-md);
+    background: transparent;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .btn-cancel:hover { background: var(--bg-muted); }
+  .btn-save {
+    padding: 9px 18px;
+    font-size: 13px;
+    font-family: 'Space Mono', monospace;
+    border: none;
+    border-radius: var(--radius-md);
+    background: var(--coral);
+    color: #fff;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .btn-save:hover { background: var(--coral-dark); }
+
+  /* ── Main Layout ── */
+  .main {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 2rem 1.5rem 4rem;
+  }
+
+  .hero {
+    text-align: center;
+    padding: 2.5rem 1rem 2rem;
+  }
+  .hero-eyebrow {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--coral);
+    margin-bottom: 12px;
+  }
+  .hero-title {
+    font-size: clamp(28px, 5vw, 42px);
+    font-weight: 700;
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+    margin-bottom: 12px;
+  }
+  .hero-title em {
+    font-style: normal;
+    color: var(--coral);
+  }
+  .hero-sub {
+    font-size: 15px;
+    color: var(--text-secondary);
+    max-width: 480px;
+    margin: 0 auto;
+    font-family: 'Space Mono', monospace;
+    line-height: 1.7;
+  }
+
+  /* ── Two Column ── */
+  .columns {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.25rem;
+    align-items: start;
+    margin-top: 1.5rem;
+  }
+  @media (max-width: 768px) {
+    .columns { grid-template-columns: 1fr; }
+  }
+
+  /* ── Card ── */
+  .card {
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-xl);
+    overflow: hidden;
+  }
+
+  .card-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--border);
+  }
+  .card-header-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .card-header-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+  }
+  .card-header-right {
+    margin-left: auto;
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    color: var(--text-tertiary);
+  }
+
+  /* ── Textarea ── */
+  .article-textarea {
+    width: 100%;
+    min-height: 280px;
+    padding: 18px;
+    font-size: 14px;
+    line-height: 1.75;
+    font-family: 'Noto Serif TC', serif;
+    color: var(--text-primary);
+    background: transparent;
+    border: none;
+    outline: none;
+    resize: vertical;
+  }
+  .article-textarea::placeholder { color: var(--text-tertiary); }
+
+  /* ── Demo Pills ── */
+  .demo-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 18px 14px;
+    flex-wrap: wrap;
+  }
+  .demo-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    color: var(--text-tertiary);
+  }
+  .demo-pill {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    padding: 4px 12px;
+    border-radius: 99px;
+    border: 1px solid var(--border-mid);
+    background: transparent;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .demo-pill:hover {
+    background: var(--coral-light);
+    color: var(--coral-dark);
+    border-color: var(--coral-border);
+  }
+
+  /* ── Generate Button ── */
+  .generate-wrap {
+    padding: 0 18px 18px;
+    border-top: 1px solid var(--border);
+    padding-top: 14px;
+  }
+  .generate-btn {
+    width: 100%;
+    padding: 14px 24px;
+    font-size: 16px;
+    font-weight: 700;
+    font-family: 'Noto Serif TC', serif;
+    letter-spacing: 0.02em;
+    color: #fff;
+    background: var(--coral);
+    border: none;
+    border-radius: var(--radius-lg);
+    cursor: pointer;
+    transition: background 0.15s, transform 0.1s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+  }
+  .generate-btn:hover:not(:disabled) { background: var(--coral-dark); }
+  .generate-btn:active:not(:disabled) { transform: scale(0.98); }
+  .generate-btn:disabled {
+    background: var(--bg-muted);
+    color: var(--text-tertiary);
+    cursor: not-allowed;
+  }
+
+  .spinner {
+    width: 18px; height: 18px;
+    border: 2px solid rgba(255,255,255,0.35);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin 0.65s linear infinite;
+    display: none;
+    flex-shrink: 0;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── Results ── */
+  .results-body {
+    padding: 14px 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-height: 320px;
+  }
+
+  .empty-state {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 3rem 1rem;
+    color: var(--text-tertiary);
+    text-align: center;
+  }
+  .empty-icon {
+    font-size: 36px;
+    opacity: 0.25;
+  }
+  .empty-text {
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+    line-height: 1.8;
+  }
+
+  /* ── Headline Card ── */
+  .headline-card {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 11px 13px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    background: var(--bg-muted);
+    transition: border-color 0.15s, background 0.15s, transform 0.1s;
+    animation: fadeUp 0.35s ease both;
+    cursor: default;
+  }
+  .headline-card:hover {
+    background: var(--bg-surface);
+    border-color: var(--border-mid);
+    transform: translateY(-1px);
+  }
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .style-tag {
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    padding: 3px 8px;
+    border-radius: 4px;
+    white-space: nowrap;
+    flex-shrink: 0;
+    margin-top: 2px;
+    border: 1px solid transparent;
+  }
+
+  .headline-text {
+    font-size: 13.5px;
+    line-height: 1.6;
+    color: var(--text-primary);
+    flex: 1;
+    font-family: 'Noto Serif TC', serif;
+  }
+
+  .copy-btn {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    padding: 3px 9px;
+    border-radius: 4px;
+    border: 1px solid var(--border-mid);
+    background: transparent;
+    color: var(--text-tertiary);
+    cursor: pointer;
+    white-space: nowrap;
+    flex-shrink: 0;
+    margin-top: 2px;
+    transition: all 0.15s;
+  }
+  .copy-btn:hover {
+    color: var(--coral);
+    border-color: var(--coral-border);
+    background: var(--coral-light);
+  }
+  .copy-btn.copied {
+    color: #3B6D11;
+    border-color: #97C459;
+    background: #EAF3DE;
+  }
+
+  /* ── Stats ── */
+  .stats-bar {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    padding: 12px 18px 18px;
+    border-top: 1px solid var(--border);
+  }
+  .stat-card {
+    background: var(--bg-muted);
+    border-radius: var(--radius-md);
+    padding: 10px 12px;
+    text-align: center;
+  }
+  .stat-num {
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--text-primary);
+    line-height: 1;
+    font-family: 'Noto Serif TC', serif;
+  }
+  .stat-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    color: var(--text-tertiary);
+    margin-top: 3px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+
+  /* ── Error ── */
+  .error-box {
+    margin: 0;
+    padding: 12px 16px;
+    background: #FCEBEB;
+    color: #791F1F;
+    border: 1px solid #F09595;
+    border-radius: var(--radius-md);
+    font-size: 13px;
+    font-family: 'Space Mono', monospace;
+    line-height: 1.6;
+  }
+
+  /* ── Footer ── */
+  .footer {
+    text-align: center;
+    padding: 2rem 1rem;
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    color: var(--text-tertiary);
+    letter-spacing: 0.05em;
+  }
+  .footer span { color: var(--coral); }
+</style>
+</head>
+<body>
+
+<!-- API Key Modal -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <div class="modal-title">輸入 Anthropic API Key</div>
+    <div class="modal-desc">
+      前往 <a href="https://console.anthropic.com/settings/keys" target="_blank">console.anthropic.com</a> 取得你的 API Key。
+    </div>
+    <input class="modal-input" type="password" id="apiKeyInput" placeholder="sk-ant-api03-..." autocomplete="off">
+    <div class="modal-note">
+      Key 僅存於你的瀏覽器記憶體，不會傳送至任何第三方伺服器，關閉頁面即清除。
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal()">取消</button>
+      <button class="btn-save" onclick="saveApiKey()">儲存並開始使用</button>
+    </div>
+  </div>
+</div>
+
+<!-- Header -->
+<header class="site-header">
+  <div class="logo">
+    <div class="logo-wordmark">Headline<em>Genius</em></div>
+    <div class="logo-tag">流量密碼產生器</div>
+  </div>
+  <div class="header-right">
+    <button class="api-status" onclick="openModal()" id="apiStatusBtn">
+      <div class="api-dot" id="apiDot"></div>
+      <span id="apiStatusText">設定 API Key</span>
+    </button>
+  </div>
+</header>
+
+<!-- Main -->
+<main class="main">
+
+  <div class="hero">
+    <div class="hero-eyebrow">AI Hackathon 2026 ✦ Prototype</div>
+    <h1 class="hero-title">標題決定了<br><em>80%</em> 的點擊率</h1>
+    <p class="hero-sub">貼入文章全文，3秒生成10款不同風格的爆款標題</p>
+  </div>
+
+  <div class="columns">
+    <!-- Left: Input -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-header-dot" style="background:var(--coral);"></div>
+        <span class="card-header-label">貼上文章內容</span>
+        <span class="card-header-right" id="charCount">0 字</span>
+      </div>
+      <textarea class="article-textarea" id="articleInput"
+        placeholder="將文章全文貼入此處&#10;&#10;HeadlineGenius 將自動分析內容核心語意，根據「10大爆款邏輯庫」瞬間生成10款不同風格的標題..."></textarea>
+      <div class="demo-row">
+        <span class="demo-label">範例：</span>
+        <button class="demo-pill" onclick="loadDemo('finance')">半導體財經</button>
+        <button class="demo-pill" onclick="loadDemo('health')">健康養生</button>
+        <button class="demo-pill" onclick="loadDemo('ai')">AI科技</button>
+      </div>
+      <div class="generate-wrap">
+        <button class="generate-btn" id="generateBtn" onclick="generateHeadlines()">
+          <div class="spinner" id="spinner"></div>
+          <span id="btnText">生成10款爆款標題</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Right: Results -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-header-dot" style="background:#639922;"></div>
+        <span class="card-header-label">生成結果</span>
+        <span class="card-header-right" id="resultStatus">等待輸入</span>
+      </div>
+      <div class="results-body" id="resultsBody">
+        <div class="empty-state">
+          <div class="empty-icon">✦</div>
+          <div class="empty-text">貼上文章後點擊「生成」<br>10款標題瞬間就位</div>
+        </div>
+      </div>
+      <div class="stats-bar" id="statsBar" style="display:none;">
+        <div class="stat-card">
+          <div class="stat-num" id="statCount">10</div>
+          <div class="stat-label">款式標題</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-num">3秒</div>
+          <div class="stat-label">生成速度</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-num">400x</div>
+          <div class="stat-label">效率提升</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<footer class="footer">
+  HeadlineGenius &nbsp;·&nbsp; Powered by <span>Claude API</span> &nbsp;·&nbsp; AI Hackathon 2026
+</footer>
+
+<script>
+  const STYLES = [
+    { key: '恐懼型', color: '#A32D2D', bg: '#FCEBEB', border: '#F09595' },
+    { key: '利益型', color: '#3B6D11', bg: '#EAF3DE', border: '#97C459' },
+    { key: '懸念型', color: '#534AB7', bg: '#EEEDFE', border: '#AFA9EC' },
+    { key: '數字型', color: '#185FA5', bg: '#E6F1FB', border: '#85B7EB' },
+    { key: '共鳴型', color: '#993C1D', bg: '#FAECE7', border: '#F0997B' },
+    { key: '權威型', color: '#854F0B', bg: '#FAEEDA', border: '#EF9F27' },
+    { key: '反差型', color: '#993556', bg: '#FBEAF0', border: '#ED93B1' },
+    { key: '懶人包', color: '#0F6E56', bg: '#E1F5EE', border: '#5DCAA5' },
+    { key: 'Threads體', color: '#5F5E5A', bg: '#F1EFE8', border: '#B4B2A9' },
+    { key: '行動召喚', color: '#D85A30', bg: '#FAECE7', border: '#F0997B' }
+  ];
+
+  const DEMOS = {
+    finance: `台積電昨日發布最新季度財報，營收達新台幣6,732億元，年增率高達38%，超越市場預期。執行長魏哲家在法說會上表示，受惠於AI晶片需求持續爆發，先進製程產能已被客戶預訂至2027年底，CoWoS封裝技術更是供不應求。受此利多消息刺激，台積電ADR在美股盤後交易大漲逾5%。分析師指出，在全球算力競賽白熱化之際，台積電獨特的技術優勢讓競爭對手難以在短期內追趕。法人機構紛紛上調目標價，瑞銀將目標價調高至1,200元，摩根士丹利則預估台積電將在2025年底前突破兆元市值大關。`,
+    health: `最新發表於《自然醫學》期刊的研究顯示，每天步行7,000步以上的中年人，其十年內罹患心血管疾病的風險降低了51%。這項橫跨12個國家、追蹤超過8萬名受試者長達15年的大型研究指出，步數的效益在50至65歲族群中最為顯著，且不需要達到傳統建議的每日10,000步目標。研究主持人強調，「關鍵不在於步數的多寡，而在於每天起身行動的習慣」。值得注意的是，飯後30分鐘內散步15至20分鐘的族群，血糖控制效果比其他時段步行者高出約22%，這對糖尿病前期患者尤其重要。`,
+    ai: `OpenAI日前宣布推出最新模型GPT-5，聲稱在數學推理、程式撰寫與多語言理解等關鍵指標上均全面超越前代，並在醫療診斷輔助測試中達到接近專科醫師的水準。然而，此一消息迅速引發AI倫理學界的廣泛討論：當AI的能力逼近甚至超越人類專業判斷，誰來為錯誤的決策負責？與此同時，多國政府已開始緊急研擬AI監管框架，歐盟預計最快在今年底前完成《AI法案》配套細則，而中國則宣布將在公共服務領域優先部署國產大模型，一場沒有硝煙的AI主權之戰正式開打。`
+  };
+
+  let apiKey = '';
+
+  const textarea = document.getElementById('articleInput');
+  textarea.addEventListener('input', () => {
+    document.getElementById('charCount').textContent = textarea.value.length + ' 字';
+  });
+
+  function loadDemo(key) {
+    textarea.value = DEMOS[key];
+    document.getElementById('charCount').textContent = DEMOS[key].length + ' 字';
+  }
+
+  function openModal() {
+    document.getElementById('modalOverlay').classList.add('open');
+    setTimeout(() => document.getElementById('apiKeyInput').focus(), 100);
+  }
+  function closeModal() {
+    document.getElementById('modalOverlay').classList.remove('open');
+  }
+  document.getElementById('modalOverlay').addEventListener('click', function(e) {
+    if (e.target === this) closeModal();
+  });
+  document.getElementById('apiKeyInput').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') saveApiKey();
+  });
+
+  function saveApiKey() {
+    const val = document.getElementById('apiKeyInput').value.trim();
+    if (!val.startsWith('sk-')) {
+      document.getElementById('apiKeyInput').style.borderColor = '#E24B4A';
+      return;
+    }
+    apiKey = val;
+    document.getElementById('apiDot').className = 'api-dot active';
+    document.getElementById('apiStatusText').textContent = 'Key 已設定';
+    closeModal();
+  }
+
+  function setLoading(on) {
+    const btn = document.getElementById('generateBtn');
+    const spinner = document.getElementById('spinner');
+    const btnText = document.getElementById('btnText');
+    btn.disabled = on;
+    spinner.style.display = on ? 'block' : 'none';
+    btnText.textContent = on ? '分析語意中...' : '重新生成';
+  }
+
+  function showError(msg) {
+    const body = document.getElementById('resultsBody');
+    body.innerHTML = '<div class="error-box">' + msg + '</div>';
+    document.getElementById('resultStatus').textContent = '發生錯誤';
+    document.getElementById('statsBar').style.display = 'none';
+  }
+
+  async function generateHeadlines() {
+    const article = textarea.value.trim();
+    if (!article) { textarea.focus(); return; }
+    if (!apiKey) { openModal(); return; }
+
+    setLoading(true);
+    document.getElementById('resultsBody').innerHTML = '';
+    document.getElementById('resultStatus').textContent = '生成中...';
+    document.getElementById('statsBar').style.display = 'none';
+
+    const systemPrompt = `你是一位頂尖的媒體下標專家，擁有豐富的社群媒體行銷經驗。
+你必須嚴格依照指定的10種風格，各生成一個標題。
+請直接輸出JSON，格式如下（不要有任何前置說明或Markdown符號）：
+{"titles":[
+  {"style":"恐懼型","title":"..."},
+  {"style":"利益型","title":"..."},
+  {"style":"懸念型","title":"..."},
+  {"style":"數字型","title":"..."},
+  {"style":"共鳴型","title":"..."},
+  {"style":"權威型","title":"..."},
+  {"style":"反差型","title":"..."},
+  {"style":"懶人包","title":"..."},
+  {"style":"Threads體","title":"..."},
+  {"style":"行動召喚","title":"..."}
+]}
+
+各風格定義：
+恐懼型：不看會後悔、揭露潛在危機
+利益型：直擊好處、省錢或賺錢
+懸念型：話說一半、製造資訊落差
+數字型：具體化、條列式
+共鳴型：情緒連結、說中心聲
+權威型：搬出專家或數據
+反差型：打破常規印象
+懶人包：快速掌握精華
+Threads體：口語、碎念、真實感
+行動召喚：強烈引導轉發
+
+標題長度：每個標題15至35字之間，自然道地的繁體中文，具有強烈吸引力。`;
+
+    try {
+      const response = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': apiKey,
+          'anthropic-version': '2023-06-01',
+          'anthropic-dangerous-direct-browser-access': 'true'
+        },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 1000,
+          system: systemPrompt,
+          messages: [{ role: 'user', content: '請為以下文章生成10款爆款標題：\n\n' + article }]
+        })
+      });
+
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.error?.message || 'API 回應錯誤（' + response.status + '）');
+      }
+
+      const data = await response.json();
+      const rawText = data.content[0].text.trim();
+      const cleaned = rawText.replace(/```json|```/g, '').trim();
+      const parsed = JSON.parse(cleaned);
+      const titles = parsed.titles;
+
+      const body = document.getElementById('resultsBody');
+      body.innerHTML = '';
+      titles.forEach((item, i) => {
+        const s = STYLES.find(x => x.key === item.style) || STYLES[i % STYLES.length];
+        const card = document.createElement('div');
+        card.className = 'headline-card';
+        card.style.animationDelay = (i * 55) + 'ms';
+        const safeTitle = item.title.replace(/'/g, '&#39;').replace(/"/g, '&quot;');
+        card.innerHTML = `
+          <span class="style-tag" style="background:${s.bg};color:${s.color};border-color:${s.border};">${item.style}</span>
+          <span class="headline-text">${item.title}</span>
+          <button class="copy-btn" data-title="${safeTitle}" onclick="copyTitle(this)">複製</button>
+        `;
+        body.appendChild(card);
+      });
+
+      document.getElementById('resultStatus').textContent = '已生成 ' + titles.length + ' 款';
+      document.getElementById('statCount').textContent = titles.length;
+      document.getElementById('statsBar').style.display = 'grid';
+
+    } catch (err) {
+      if (err.message.includes('401') || err.message.includes('authentication')) {
+        document.getElementById('apiDot').className = 'api-dot error';
+        document.getElementById('apiStatusText').textContent = 'Key 無效';
+        showError('API Key 無效，請重新設定。');
+      } else {
+        showError('生成失敗：' + (err.message || '請檢查網路連線後重試'));
+      }
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function copyTitle(btn) {
+    const title = btn.getAttribute('data-title');
+    navigator.clipboard.writeText(title).then(() => {
+      btn.textContent = '已複製';
+      btn.classList.add('copied');
+      setTimeout(() => {
+        btn.textContent = '複製';
+        btn.classList.remove('copied');
+      }, 1500);
+    });
+  }
+
+  // 頁面載入時自動開啟 API Key 設定
+  window.addEventListener('load', () => {
+    setTimeout(() => openModal(), 400);
+  });
+</script>
+</body>
+</html>
